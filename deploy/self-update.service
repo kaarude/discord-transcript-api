@@ -1,0 +1,14 @@
+[Unit]
+Description=Build and deploy the latest transcript-api commit
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+# Adjust these to match your installation.
+Environment=DEPLOY_APP_DIR=/opt/transcript-api
+Environment=DEPLOY_SOURCE_DIR=/opt/transcript-api-source
+Environment=DEPLOY_REPO=https://github.com/your-user/discord-transcript-api.git
+Environment=DEPLOY_IMAGE=ghcr.io/your-user/discord-transcript-api
+ExecStart=/usr/local/sbin/transcript-api-update

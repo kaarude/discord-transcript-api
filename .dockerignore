@@ -1,0 +1,9 @@
+.git
+.github
+.env
+data
+transcripts
+tests
+docs
+*.md
+LICENSE

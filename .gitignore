@@ -1,0 +1,6 @@
+.env
+/data/
+/transcripts/
+/transcript-api
+/coverage.out
+.DS_Store

@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <title>Discord Transcript API — Service health</title>
+  <style>
+    :root {
+      --canvas: #111216;
+      --surface: #18191f;
+      --surface-raised: #202127;
+      --surface-hover: #25272e;
+      --border: #30323a;
+      --border-strong: #454852;
+      --text: #f2f3f5;
+      --text-secondary: #b5bac1;
+      --text-muted: #949ba4;
+      --accent: #5865f2;
+      --accent-hover: #6975f5;
+      --accent-soft: rgba(88, 101, 242, 0.16);
+      --success: #48c78e;
+      --success-soft: rgba(72, 199, 142, 0.12);
+      --warning: #f0b45a;
+      --danger: #f26b6d;
+      --focus: #aeb4ff;
+      --radius: 14px;
+      --z-sticky: 20;
+    }
+
+    * { box-sizing: border-box; }
+    html { min-width: 320px; background: var(--canvas); }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--text);
+      background: var(--canvas);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, input { font: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    a { color: inherit; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: var(--z-sticky);
+      border-bottom: 1px solid var(--border);
+      background: rgba(17, 18, 22, 0.94);
+      backdrop-filter: blur(12px);
+    }
+
+    .topbar-inner {
+      width: min(1180px, calc(100% - 40px));
+      min-height: 64px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .brand, .topbar-actions, .status-chip, .button, .switch-label {
+      display: flex;
+      align-items: center;
+    }
+
+    .brand { gap: 11px; min-width: 0; text-decoration: none; }
+    .brand-mark { width: 31px; height: 31px; flex: 0 0 auto; display: block; border-radius: 8px; }
+    .brand-name { font-size: 0.925rem; font-weight: 690; letter-spacing: -0.01em; }
+    .brand-path {
+      color: var(--text-muted);
+      font: 0.82rem/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .topbar-actions { gap: 10px; }
+    .switch-label { gap: 8px; color: var(--text-secondary); font-size: 0.8rem; cursor: pointer; }
+    .switch-label input { width: 16px; height: 16px; accent-color: var(--accent); }
+
+    .button {
+      min-height: 36px;
+      gap: 8px;
+      justify-content: center;
+      border: 0;
+      border-radius: 8px;
+      padding: 0 13px;
+      color: white;
+      background: var(--accent);
+      font-size: 0.82rem;
+      font-weight: 650;
+      cursor: pointer;
+      transition: background 160ms ease, transform 160ms ease;
+    }
+    .button:hover { background: var(--accent-hover); }
+    .button:active { transform: translateY(1px); }
+    .button:disabled { cursor: wait; opacity: 0.66; }
+    .button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+    .button svg { width: 15px; height: 15px; }
+    .button.is-running svg { animation: spin 800ms linear infinite; }
+
+    main {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 58px 0 42px;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(118px, 0.5fr));
+      align-items: end;
+      gap: 0;
+      padding-bottom: 38px;
+    }
+
+    .summary-copy { padding-right: 44px; }
+    .status-chip {
+      width: fit-content;
+      gap: 7px;
+      margin-bottom: 13px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      color: #83ddb3;
+      background: var(--success-soft);
+      font-size: 0.77rem;
+      font-weight: 650;
+    }
+    .status-chip.degraded { color: #ffd08a; background: rgba(240, 180, 90, 0.13); }
+    .status-chip.offline { color: #ff9a9c; background: rgba(242, 107, 109, 0.13); }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .status-chip:not(.offline) .status-dot { animation: pulse 2.4s ease-in-out infinite; }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 2.25rem;
+      line-height: 1.14;
+      letter-spacing: -0.035em;
+      text-wrap: balance;
+    }
+    .summary-copy p { max-width: 58ch; margin: 0; color: var(--text-secondary); text-wrap: pretty; }
+
+    .summary-stat {
+      min-height: 78px;
+      padding-left: 24px;
+      border-left: 1px solid var(--border);
+    }
+    .summary-stat strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 1.4rem;
+      line-height: 1.1;
+      letter-spacing: -0.025em;
+      font-variant-numeric: tabular-nums;
+    }
+    .summary-stat span { color: var(--text-muted); font-size: 0.8rem; }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.18fr) minmax(320px, 0.82fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .panel {
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .panel-wide { grid-column: 1 / -1; }
+    .panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 20px 22px 17px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-header h2 { margin: 0 0 3px; font-size: 0.98rem; letter-spacing: -0.01em; }
+    .panel-header p { margin: 0; color: var(--text-muted); font-size: 0.78rem; }
+    .updated { white-space: nowrap; color: var(--text-muted); font-size: 0.74rem; font-variant-numeric: tabular-nums; }
+
+    .connection-body { padding: 22px; }
+    .connection-lead {
+      display: grid;
+      grid-template-columns: 170px minmax(0, 1fr);
+      gap: 28px;
+      align-items: center;
+      min-height: 142px;
+    }
+    .latency-reading { padding-right: 26px; border-right: 1px solid var(--border); }
+    .latency-value {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      margin: 2px 0 7px;
+      font-variant-numeric: tabular-nums;
+    }
+    .latency-value strong { font-size: 2.65rem; line-height: 1; letter-spacing: -0.04em; }
+    .latency-value span { color: var(--text-muted); font-size: 0.85rem; }
+    .quality { color: var(--success); font-size: 0.82rem; font-weight: 660; }
+    .quality.fair { color: var(--warning); }
+    .quality.slow { color: var(--danger); }
+    .metric-label { color: var(--text-muted); font-size: 0.76rem; }
+
+    .latency-chart { width: 100%; height: 126px; overflow: visible; }
+    .chart-guide { stroke: var(--border); stroke-width: 1; }
+    .chart-area { fill: rgba(88, 101, 242, 0.11); }
+    .chart-line { fill: none; stroke: #8992ff; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+    .diagnostic-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      margin-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+    .diagnostic-stat { padding: 18px 18px 0 0; }
+    .diagnostic-stat + .diagnostic-stat { padding-left: 18px; border-left: 1px solid var(--border); }
+    .diagnostic-stat strong { display: block; margin-top: 4px; font-size: 1rem; font-variant-numeric: tabular-nums; }
+
+    .traffic-body { padding: 8px 22px 17px; }
+    .traffic-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      min-height: 58px;
+      border-bottom: 1px solid var(--border);
+    }
+    .traffic-row:last-child { border-bottom: 0; }
+    .traffic-row span { color: var(--text-secondary); font-size: 0.82rem; }
+    .traffic-row strong { font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+    .traffic-row .healthy { color: var(--success); }
+
+    .runtime-body {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+    }
+    .runtime-group { padding: 22px; }
+    .runtime-group + .runtime-group { border-left: 1px solid var(--border); }
+    .runtime-group h3 { margin: 0 0 18px; color: var(--text-secondary); font-size: 0.82rem; font-weight: 660; }
+    .meter-row { margin-top: 17px; }
+    .meter-copy { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 8px; font-size: 0.77rem; }
+    .meter-copy span:first-child { color: var(--text-muted); }
+    .meter-copy span:last-child { font-variant-numeric: tabular-nums; }
+    .meter { height: 5px; overflow: hidden; border-radius: 999px; background: var(--surface-raised); }
+    .meter-fill { width: 100%; height: 100%; border-radius: inherit; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform 220ms cubic-bezier(.22, 1, .36, 1); }
+    .meter-fill.success { background: var(--success); }
+    .meter-fill.warning { background: var(--warning); }
+    .runtime-detail { display: flex; justify-content: space-between; gap: 16px; margin-top: 14px; font-size: 0.77rem; }
+    .runtime-detail span:first-child { color: var(--text-muted); }
+    .runtime-detail span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 24px 2px 0;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+    footer nav { display: flex; gap: 18px; }
+    footer a { text-decoration: none; }
+    footer a:hover { color: var(--text); }
+
+    .skeleton {
+      display: inline-block;
+      min-width: 64px;
+      min-height: 1em;
+      border-radius: 5px;
+      color: transparent !important;
+      background: var(--surface-raised);
+      animation: skeleton 1.4s ease-in-out infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse { 50% { opacity: 0.38; } }
+    @keyframes skeleton { 50% { background: var(--surface-hover); } }
+
+    @media (max-width: 900px) {
+      .summary { grid-template-columns: repeat(3, 1fr); row-gap: 30px; }
+      .summary-copy { grid-column: 1 / -1; padding-right: 0; }
+      .summary-copy + .summary-stat { padding-left: 0; border-left: 0; }
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .panel-wide { grid-column: auto; }
+      .runtime-body { grid-template-columns: 1fr; }
+      .runtime-group + .runtime-group { border-left: 0; border-top: 1px solid var(--border); }
+    }
+
+    @media (max-width: 640px) {
+      .topbar-inner, main { width: min(100% - 28px, 1180px); }
+      .topbar-inner { min-height: 58px; }
+      .brand-path, .switch-label { display: none; }
+      .button span { display: none; }
+      .button { width: 36px; padding: 0; }
+      main { padding-top: 36px; }
+      .summary { grid-template-columns: repeat(3, minmax(0, 1fr)); padding-bottom: 28px; }
+      .summary-stat { min-height: 70px; padding-left: 14px; }
+      .summary-copy + .summary-stat { padding-left: 0; border-left: 0; }
+      .summary-stat strong { font-size: 1.16rem; }
+      h1 { font-size: 1.85rem; }
+      .panel-header, .connection-body, .runtime-group { padding-left: 17px; padding-right: 17px; }
+      .connection-lead { grid-template-columns: 1fr; gap: 18px; }
+      .latency-reading { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 0 0 17px; border-right: 0; border-bottom: 1px solid var(--border); }
+      .latency-value { margin-bottom: 0; }
+      .latency-value strong { font-size: 2.25rem; }
+      .latency-reading .quality { padding-bottom: 5px; }
+      .diagnostic-stats { grid-template-columns: 1fr; }
+      .diagnostic-stat { padding: 14px 0; }
+      .diagnostic-stat + .diagnostic-stat { padding-left: 0; border-left: 0; border-top: 1px solid var(--border); }
+      .traffic-body { padding-left: 17px; padding-right: 17px; }
+      footer { flex-direction: column; gap: 10px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/health" aria-label="Discord Transcript API health home">
+        <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
+          <rect x="4" y="4" width="56" height="56" rx="14" fill="#5865f2"/>
+          <path fill="#fff" d="M17 15h30a7 7 0 0 1 7 7v17a7 7 0 0 1-7 7H31l-10 8v-8h-4a7 7 0 0 1-7-7V22a7 7 0 0 1 7-7Z"/>
+          <path fill="none" stroke="#5865f2" stroke-linecap="round" stroke-width="4" d="M22 26h20M22 34h14"/>
+          <circle cx="48" cy="47" r="8" fill="#f0b232" stroke="#5865f2" stroke-width="3"/>
+          <path fill="none" stroke="#fff" stroke-linecap="round" stroke-width="2.5" d="m44.5 47 2.2 2.2 4.5-4.5"/>
+        </svg>
+        <span class="brand-name">Discord Transcript API</span>
+        <span class="brand-path">/health</span>
+      </a>
+      <div class="topbar-actions">
+        <label class="switch-label"><input id="autoRefresh" type="checkbox" checked /> Auto-refresh</label>
+        <button id="runButton" class="button" type="button" aria-label="Run connection diagnostics">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66"/><path d="M20 4v7h-7"/></svg>
+          <span>Run diagnostics</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="summary" aria-labelledby="pageTitle">
+      <div class="summary-copy">
+        <div id="statusChip" class="status-chip" role="status"><span class="status-dot"></span><span id="statusText">Checking service</span></div>
+        <h1 id="pageTitle">Service performance at a glance</h1>
+        <p id="summaryMessage">Live runtime telemetry and a connection check from this device to the API.</p>
+      </div>
+      <div class="summary-stat">
+        <strong id="uptime" class="skeleton">—</strong>
+        <span>Current uptime</span>
+      </div>
+      <div class="summary-stat">
+        <strong id="requestCount" class="skeleton">—</strong>
+        <span>Requests served</span>
+      </div>
+      <div class="summary-stat">
+        <strong id="serverP95" class="skeleton">—</strong>
+        <span>Server p95</span>
+      </div>
+    </section>
+
+    <div class="dashboard-grid">
+      <section class="panel" aria-labelledby="connectionTitle">
+        <div class="panel-header">
+          <div><h2 id="connectionTitle">Connection diagnostics</h2><p>Measured between this browser and Discord Transcript API</p></div>
+          <span id="connectionUpdated" class="updated">Waiting to run</span>
+        </div>
+        <div class="connection-body">
+          <div class="connection-lead">
+            <div class="latency-reading">
+              <div>
+                <span class="metric-label">Average round trip</span>
+                <div class="latency-value"><strong id="latencyAverage">—</strong><span>ms</span></div>
+              </div>
+              <div id="connectionQuality" class="quality">Measuring…</div>
+            </div>
+            <svg id="latencyChart" class="latency-chart" viewBox="0 0 420 126" preserveAspectRatio="none" role="img" aria-label="Recent connection latency samples">
+              <line class="chart-guide" x1="0" y1="20" x2="420" y2="20" />
+              <line class="chart-guide" x1="0" y1="63" x2="420" y2="63" />
+              <line class="chart-guide" x1="0" y1="106" x2="420" y2="106" />
+              <path id="chartArea" class="chart-area" d="" />
+              <polyline id="chartLine" class="chart-line" points="" />
+            </svg>
+          </div>
+          <div class="diagnostic-stats">
+            <div class="diagnostic-stat"><span class="metric-label">95th percentile</span><strong id="latencyP95">—</strong></div>
+            <div class="diagnostic-stat"><span class="metric-label">Jitter</span><strong id="latencyJitter">—</strong></div>
+            <div class="diagnostic-stat"><span class="metric-label">Estimated download</span><strong id="downloadSpeed">—</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="trafficTitle">
+        <div class="panel-header">
+          <div><h2 id="trafficTitle">Request performance</h2><p>Rolling measurements from this process</p></div>
+          <span id="sampleSize" class="updated">0 samples</span>
+        </div>
+        <div class="traffic-body">
+          <div class="traffic-row"><span>Average response</span><strong id="averageResponse">—</strong></div>
+          <div class="traffic-row"><span>95th percentile</span><strong id="p95Response">—</strong></div>
+          <div class="traffic-row"><span>Requests in last minute</span><strong id="requestsPerMinute">—</strong></div>
+          <div class="traffic-row"><span>Requests in flight</span><strong id="inFlight">—</strong></div>
+          <div class="traffic-row"><span>Error rate</span><strong id="errorRate" class="healthy">—</strong></div>
+        </div>
+      </section>
+
+      <section class="panel panel-wide" aria-labelledby="runtimeTitle">
+        <div class="panel-header">
+          <div><h2 id="runtimeTitle">Runtime resources</h2><p>Process and host pressure indicators</p></div>
+          <span id="runtimePlatform" class="updated">—</span>
+        </div>
+        <div class="runtime-body">
+          <div class="runtime-group">
+            <h3>Process load</h3>
+            <div class="meter-row">
+              <div class="meter-copy"><span>CPU usage</span><span id="cpuValue">—</span></div>
+              <div class="meter"><div id="cpuBar" class="meter-fill"></div></div>
+            </div>
+            <div class="runtime-detail"><span>Host load (1m)</span><span id="hostLoad">—</span></div>
+            <div class="runtime-detail"><span>Logical CPUs</span><span id="logicalCpus">—</span></div>
+          </div>
+          <div class="runtime-group">
+            <h3>Memory</h3>
+            <div class="meter-row">
+              <div class="meter-copy"><span>Go heap</span><span id="heapValue">—</span></div>
+              <div class="meter"><div id="heapBar" class="meter-fill success"></div></div>
+            </div>
+            <div class="runtime-detail"><span>Resident set</span><span id="rssValue">—</span></div>
+            <div class="runtime-detail"><span>Host memory</span><span id="systemMemory">—</span></div>
+          </div>
+          <div class="runtime-group">
+            <h3>Scheduler latency</h3>
+            <div class="meter-row">
+              <div class="meter-copy"><span>p95 delay</span><span id="loopP95">—</span></div>
+              <div class="meter"><div id="loopBar" class="meter-fill success"></div></div>
+            </div>
+            <div class="runtime-detail"><span>Median delay</span><span id="loopP50">—</span></div>
+            <div class="runtime-detail"><span>Peak delay</span><span id="loopMax">—</span></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      <span id="serviceMeta">Discord Transcript API · awaiting telemetry</span>
+      <nav aria-label="Related links"><a href="/health?format=json">JSON telemetry</a><a href="/admin">Admin dashboard</a></nav>
+    </footer>
+  </main>
+
+  <script>
+    const byId = (id) => document.getElementById(id);
+    const state = { diagnosticsRunning: false, timer: null };
+
+    function text(id, value) {
+      const element = byId(id);
+      element.textContent = value;
+      element.classList.remove('skeleton');
+    }
+
+    function formatDuration(seconds) {
+      const total = Math.max(0, Math.floor(seconds));
+      const days = Math.floor(total / 86400);
+      const hours = Math.floor((total % 86400) / 3600);
+      const minutes = Math.floor((total % 3600) / 60);
+      if (days) return `${days}d ${hours}h`;
+      if (hours) return `${hours}h ${minutes}m`;
+      return `${minutes}m ${total % 60}s`;
+    }
+
+    function formatBytes(bytes) {
+      if (!Number.isFinite(bytes)) return '—';
+      const units = ['B', 'KiB', 'MiB', 'GiB'];
+      let value = bytes;
+      let index = 0;
+      while (value >= 1024 && index < units.length - 1) { value /= 1024; index += 1; }
+      return `${value >= 100 ? value.toFixed(0) : value.toFixed(1)} ${units[index]}`;
+    }
+
+    function formatMs(value) {
+      return `${Number(value || 0).toFixed(value >= 100 ? 0 : 1)} ms`;
+    }
+
+    function setMeter(id, percent, warningAt = 75) {
+      const safePercent = Math.min(Math.max(Number(percent) || 0, 0), 100);
+      const meter = byId(id);
+      meter.style.transform = `scaleX(${safePercent / 100})`;
+      meter.classList.toggle('warning', safePercent >= warningAt);
+      meter.classList.toggle('success', safePercent < warningAt);
+    }
+
+    function setServiceStatus(status) {
+      const chip = byId('statusChip');
+      chip.className = 'status-chip';
+      if (status === 'degraded') {
+        chip.classList.add('degraded');
+        text('statusText', 'Performance degraded');
+        text('summaryMessage', 'The service is responding, but one or more runtime signals need attention.');
+      } else {
+        text('statusText', 'All systems operational');
+        text('summaryMessage', 'Live runtime telemetry and a connection check from this device to the API.');
+      }
+    }
+
+    function renderSnapshot(data) {
+      setServiceStatus(data.status);
+      text('uptime', formatDuration(data.uptime));
+      text('requestCount', Number(data.traffic.totalRequests).toLocaleString());
+      text('serverP95', formatMs(data.traffic.p95ResponseMs));
+      text('averageResponse', formatMs(data.traffic.averageResponseMs));
+      text('p95Response', formatMs(data.traffic.p95ResponseMs));
+      text('requestsPerMinute', String(data.traffic.requestsPerMinute));
+      text('inFlight', String(data.traffic.inFlight));
+      text('errorRate', `${data.traffic.errorRatePercent.toFixed(2)}%`);
+      byId('errorRate').className = data.traffic.errorRatePercent > 1 ? '' : 'healthy';
+      text('sampleSize', `${data.traffic.sampleSize} sample${data.traffic.sampleSize === 1 ? '' : 's'}`);
+
+      text('cpuValue', `${data.runtime.cpuPercent.toFixed(1)}%`);
+      setMeter('cpuBar', data.runtime.cpuPercent);
+      text('hostLoad', data.runtime.loadAverage[0].toFixed(2));
+      text('logicalCpus', String(data.runtime.logicalCpus));
+      text('runtimePlatform', `${data.runtime.nodeVersion} · ${data.runtime.platform}`);
+
+      text('heapValue', `${formatBytes(data.memory.heapUsedBytes)} / ${formatBytes(data.memory.heapTotalBytes)}`);
+      setMeter('heapBar', data.memory.heapUtilizationPercent, 85);
+      text('rssValue', formatBytes(data.memory.rssBytes));
+      const systemPercent = data.memory.systemTotalBytes ? (data.memory.systemUsedBytes / data.memory.systemTotalBytes) * 100 : 0;
+      text('systemMemory', `${systemPercent.toFixed(0)}% of ${formatBytes(data.memory.systemTotalBytes)}`);
+
+      text('loopP95', formatMs(data.runtime.eventLoopLagP95Ms));
+      setMeter('loopBar', (data.runtime.eventLoopLagP95Ms / 200) * 100, 50);
+      text('loopP50', formatMs(data.runtime.eventLoopLagP50Ms));
+      text('loopMax', formatMs(data.runtime.eventLoopLagMaxMs));
+      text('serviceMeta', `${data.service.name} ${data.service.version} · ${data.service.environment} · started ${new Date(data.service.startedAt).toLocaleString()}`);
+    }
+
+    async function loadSnapshot() {
+      try {
+        const response = await fetch('/health/data', { cache: 'no-store', headers: { Accept: 'application/json' } });
+        if (!response.ok) throw new Error(`Telemetry returned ${response.status}`);
+        renderSnapshot(await response.json());
+      } catch (error) {
+        const chip = byId('statusChip');
+        chip.className = 'status-chip offline';
+        text('statusText', 'Telemetry unavailable');
+        text('summaryMessage', 'The dashboard could not reach the health endpoint. Retrying automatically.');
+      }
+    }
+
+    function percentile(values, target) {
+      const sorted = [...values].sort((a, b) => a - b);
+      return sorted[Math.min(Math.ceil(target * sorted.length) - 1, sorted.length - 1)];
+    }
+
+    function drawLatencyChart(samples) {
+      const width = 420;
+      const top = 12;
+      const bottom = 112;
+      const maximum = Math.max(...samples, 50) * 1.15;
+      const points = samples.map((sample, index) => {
+        const x = samples.length === 1 ? width / 2 : (index / (samples.length - 1)) * width;
+        const y = bottom - (sample / maximum) * (bottom - top);
+        return [x, y];
+      });
+      const pointString = points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+      byId('chartLine').setAttribute('points', pointString);
+      byId('chartArea').setAttribute('d', points.length ? `M ${points[0][0]} ${bottom} L ${pointString.replaceAll(' ', ' L ')} L ${points.at(-1)[0]} ${bottom} Z` : '');
+    }
+
+    function connectionLabel(average) {
+      if (average < 80) return ['Excellent connection', ''];
+      if (average < 180) return ['Good connection', ''];
+      if (average < 350) return ['Fair connection', 'fair'];
+      return ['Slow connection', 'slow'];
+    }
+
+    async function timedFetch(url) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      const startedAt = performance.now();
+      try {
+        const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
+        if (!response.ok) throw new Error(`Probe returned ${response.status}`);
+        await response.arrayBuffer();
+        return performance.now() - startedAt;
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    async function runDiagnostics() {
+      if (state.diagnosticsRunning) return;
+      state.diagnosticsRunning = true;
+      const button = byId('runButton');
+      button.disabled = true;
+      button.classList.add('is-running');
+      text('connectionQuality', 'Measuring…');
+      byId('connectionQuality').className = 'quality';
+
+      try {
+        await timedFetch(`/health/ping?warmup=${Date.now()}`);
+        const samples = [];
+        for (let index = 0; index < 7; index += 1) {
+          samples.push(await timedFetch(`/health/ping?sample=${index}&t=${Date.now()}`));
+        }
+        const transferStartedAt = performance.now();
+        const transfer = await fetch(`/health/probe?bytes=131072&t=${Date.now()}`, { cache: 'no-store' });
+        if (!transfer.ok) throw new Error(`Transfer probe returned ${transfer.status}`);
+        const payload = await transfer.arrayBuffer();
+        const transferSeconds = Math.max((performance.now() - transferStartedAt) / 1000, 0.001);
+        const megabitsPerSecond = (payload.byteLength * 8) / transferSeconds / 1_000_000;
+
+        const average = samples.reduce((sum, sample) => sum + sample, 0) / samples.length;
+        const jitter = Math.sqrt(samples.reduce((sum, sample) => sum + ((sample - average) ** 2), 0) / samples.length);
+        const [label, qualityClass] = connectionLabel(average);
+        text('latencyAverage', average.toFixed(0));
+        text('latencyP95', formatMs(percentile(samples, 0.95)));
+        text('latencyJitter', formatMs(jitter));
+        text('downloadSpeed', `${megabitsPerSecond >= 100 ? megabitsPerSecond.toFixed(0) : megabitsPerSecond.toFixed(1)} Mbps`);
+        text('connectionQuality', label);
+        byId('connectionQuality').className = `quality ${qualityClass}`.trim();
+        text('connectionUpdated', `7 samples · ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`);
+        drawLatencyChart(samples);
+      } catch (error) {
+        text('connectionQuality', 'Check failed');
+        byId('connectionQuality').className = 'quality slow';
+        text('connectionUpdated', 'Unable to reach probe');
+      } finally {
+        state.diagnosticsRunning = false;
+        button.disabled = false;
+        button.classList.remove('is-running');
+      }
+    }
+
+    function scheduleRefresh() {
+      clearInterval(state.timer);
+      if (byId('autoRefresh').checked) {
+        state.timer = setInterval(() => {
+          loadSnapshot();
+          runDiagnostics();
+        }, 30_000);
+      }
+    }
+
+    byId('runButton').addEventListener('click', () => { loadSnapshot(); runDiagnostics(); });
+    byId('autoRefresh').addEventListener('change', scheduleRefresh);
+    loadSnapshot();
+    runDiagnostics();
+    scheduleRefresh();
+  </script>
+</body>
+</html>

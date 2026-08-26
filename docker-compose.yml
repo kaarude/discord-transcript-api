@@ -1,0 +1,20 @@
+services:
+  transcript-api:
+    build: .
+    image: ghcr.io/kaarude/discord-transcript-api:latest
+    container_name: transcript-api
+    ports:
+      - "${HOST_BIND_ADDRESS:-127.0.0.1}:3010:3010"
+    env_file:
+      - path: .env
+        required: false
+    user: "${PUID:-1000}:${PGID:-1000}"
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+      - ./transcripts:/app/transcripts
+    healthcheck:
+      test: ["CMD", "/app", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

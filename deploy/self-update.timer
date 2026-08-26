@@ -1,0 +1,14 @@
+[Unit]
+Description=Check the source repository for transcript-api updates
+
+[Timer]
+OnBootSec=5min
+# Adjust the check interval to taste. Two minutes is aggressive; one hour is
+# a calmer default for most homeservers.
+OnUnitActiveSec=2min
+RandomizedDelaySec=15s
+Persistent=true
+Unit=self-update.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <title>Discord Transcript API - Private access</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --canvas: #16171b;
+      --surface: #202126;
+      --surface-raised: #27282e;
+      --border: #34363d;
+      --border-strong: #4b4e58;
+      --text: #f4f5f7;
+      --text-muted: #a9acb5;
+      --accent: #5865f2;
+      --accent-hover: #6975f5;
+      --danger: #ff7b86;
+      --success: #56d49b;
+      --focus: #9ba4ff;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    *::selection { color: #fff; background: #5865f2; }
+    html { min-height: 100%; background: var(--canvas); scrollbar-color: var(--border-strong) var(--canvas); }
+    body { min-height: 100vh; margin: 0; padding: 32px 18px; display: grid; place-items: center; color: var(--text); background: radial-gradient(circle at 50% 0%, #242632 0, var(--canvas) 44%); font: 15px/1.55 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    button, input { font: inherit; }
+    .shell { width: min(100%, 520px); }
+    .brand { display: flex; align-items: center; gap: 11px; margin: 0 0 18px; color: var(--text-muted); }
+    .brand-mark { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; color: #fff; background: var(--accent); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3); }
+    .brand-mark svg { width: 20px; height: 20px; }
+    .brand strong { display: block; color: var(--text); font-size: 0.9rem; }
+    .brand span { display: block; font-size: 0.73rem; }
+    .panel { border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; background: var(--surface); box-shadow: 0 18px 52px rgba(0, 0, 0, 0.28); }
+    h1 { max-width: 18ch; margin: 0 0 10px; font-size: clamp(1.72rem, 6vw, 2.25rem); line-height: 1.12; letter-spacing: -0.03em; }
+    p { margin: 0; }
+    .intro { max-width: 60ch; color: var(--text-muted); }
+    .actions { display: grid; gap: 12px; margin-top: 24px; }
+    .field { display: grid; gap: 7px; }
+    label { color: #d7d9df; font-size: 0.78rem; font-weight: 680; }
+    input { width: 100%; min-height: 46px; border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; color: var(--text); background: var(--canvas); outline: 0; caret-color: var(--focus); transition: border-color 150ms ease, background 150ms ease; }
+    input:hover { border-color: var(--border-strong); }
+    input:focus { border-color: var(--focus); background: var(--surface-raised); }
+    input::placeholder { color: #858995; opacity: 1; }
+    button { min-height: 44px; border: 0; border-radius: 9px; padding: 0 16px; color: #fff; background: var(--accent); font-weight: 720; cursor: pointer; transition: background 160ms ease, transform 160ms ease, box-shadow 160ms ease; }
+    button:hover { background: var(--accent-hover); box-shadow: 0 8px 22px rgba(31, 39, 124, 0.35); }
+    button:active { transform: translateY(1px); }
+    button:disabled { opacity: 0.55; cursor: wait; box-shadow: none; }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+    .setup-path { margin-top: 22px; padding: 16px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .setup-path strong { display: block; margin-bottom: 6px; font-size: 0.83rem; }
+    .setup-path p { color: var(--text-muted); font-size: 0.78rem; }
+    code { display: inline-block; margin-top: 9px; border-radius: 7px; padding: 6px 8px; color: #dfe2ff; background: #171923; font: 0.74rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+    .facts { display: grid; gap: 10px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); }
+    .fact { display: flex; align-items: flex-start; gap: 10px; color: var(--text-muted); font-size: 0.76rem; }
+    .fact svg { width: 17px; height: 17px; flex: 0 0 auto; margin-top: 2px; color: var(--success); }
+    .error { min-height: 22px; margin-top: 10px; color: var(--danger); font-size: 0.78rem; }
+    .notice { margin-top: 18px; border-radius: 10px; padding: 12px 13px; color: #ffd9dc; background: #39252a; font-size: 0.78rem; }
+    .choice { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 20px; }
+    .choice-card { position: relative; display: grid; gap: 4px; padding: 14px; border: 1px solid var(--border); border-radius: 11px; color: var(--text); background: var(--canvas); text-align: left; cursor: pointer; transition: border-color 150ms ease, background 150ms ease; }
+    .choice-card:hover { border-color: var(--border-strong); }
+    .choice-card.active { border-color: var(--focus); background: var(--surface-raised); }
+    .choice-card svg { width: 18px; height: 18px; margin-bottom: 2px; color: var(--accent-hover); }
+    .choice-card strong { font-size: 0.85rem; }
+    .choice-card span { color: var(--text-muted); font-size: 0.73rem; }
+    .method-form[hidden] { display: none !important; }
+    .divider { display: flex; align-items: center; gap: 12px; margin-top: 20px; color: #858995; font-size: 0.72rem; }
+    .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+    .link-button { min-height: 44px; width: 100%; border: 1px solid var(--border-strong); border-radius: 9px; padding: 0 16px; color: var(--text); background: transparent; font-weight: 650; cursor: pointer; transition: background 160ms ease; }
+    .link-button:hover:not(:disabled) { background: var(--surface-raised); }
+    .loading { min-height: 230px; display: grid; place-items: center; color: var(--text-muted); }
+    .spinner { width: 24px; height: 24px; margin: 0 auto 12px; border: 2px solid var(--border-strong); border-top-color: var(--focus); border-radius: 50%; animation: spin 700ms linear infinite; }
+    .footer { margin: 16px 0 0; color: #898d98; font-size: 0.7rem; text-align: center; }
+    [hidden] { display: none !important; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 520px) { body { padding: 22px 14px; place-items: start center; } .panel { padding: 23px 20px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+  </style>
+</head>
+<body>
+  <main class="shell" aria-live="polite">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4V5Z"/><path d="M8 9h8M8 12h5"/></svg></div>
+      <div><strong>Discord Transcript API</strong><span>Private project console</span></div>
+    </div>
+
+    <section class="panel">
+      <div id="loadingView" class="loading"><div><div class="spinner" aria-hidden="true"></div><p>Checking this server...</p></div></div>
+
+      <div id="loginView" hidden>
+        <div id="passkeyLoginBlock">
+          <h1>Sign in with a passkey</h1>
+          <p class="intro">Use a passkey saved on this device, a nearby device, or a hardware security key.</p>
+        </div>
+        <div id="passwordLoginBlock" hidden>
+          <h1>Sign in</h1>
+          <p class="intro">Enter the dashboard password configured during first-time setup.</p>
+        </div>
+        <div id="loginNotice" class="notice" hidden></div>
+        <form id="passwordLoginForm" class="actions" hidden>
+          <div class="field">
+            <label for="loginPassword">Dashboard password</label>
+            <input id="loginPassword" name="password" type="password" autocomplete="current-password" required />
+          </div>
+          <button id="passwordLoginButton" type="submit">Sign in with password</button>
+        </form>
+        <div class="divider" id="methodDivider" hidden>or continue with a passkey</div>
+        <button id="loginButton" type="button">Continue with a passkey</button>
+        <p id="loginError" class="error" role="alert"></p>
+        <div class="facts">
+          <div class="fact"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>Sessions expire after 24 hours and are cleared when the server restarts.</span></div>
+        </div>
+      </div>
+
+      <div id="setupView" hidden>
+        <h1>Secure this server</h1>
+        <p class="intro">No sign-in method exists yet. Use the one-time setup code from the host to claim this installation, then choose how you want to sign in.</p>
+        <div class="setup-path">
+          <strong>Get the setup code from the host</strong>
+          <p>It is generated locally and removed as soon as the first sign-in method is saved.</p>
+          <code>cat data/setup-code</code>
+        </div>
+        <form id="setupForm" class="actions">
+          <div class="field">
+            <label for="setupCode">One-time setup code</label>
+            <input id="setupCode" name="setupCode" type="text" autocomplete="one-time-code" autocapitalize="off" spellcheck="false" required />
+          </div>
+        </form>
+        <div class="choice" role="group" aria-label="Choose a sign-in method">
+          <button id="choosePasskeyButton" class="choice-card active" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+            <strong>Passkey</strong>
+            <span>Phishing-resistant. Stored on your device or a security key.</span>
+          </button>
+          <button id="choosePasswordButton" class="choice-card" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="m10.85 12.15 8.9-8.9M18 5l3 3M15 8l3 3"/></svg>
+            <strong>Password</strong>
+            <span>Simple and portable. Choose a long, unique passphrase.</span>
+          </button>
+        </div>
+
+        <div id="passkeySetupForm" class="actions">
+          <div class="field">
+            <label for="passkeyName">Passkey name</label>
+            <input id="passkeyName" name="name" type="text" autocomplete="off" maxlength="64" value="Primary passkey" required />
+          </div>
+          <button id="setupButton" type="button">Create first passkey</button>
+        </div>
+
+        <form id="passwordSetupForm" class="actions" hidden>
+          <div class="field">
+            <label for="setupPassword">New dashboard password (min. 12 characters)</label>
+            <input id="setupPassword" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required />
+          </div>
+          <div class="field">
+            <label for="setupPasswordConfirm">Repeat the password</label>
+            <input id="setupPasswordConfirm" name="passwordConfirm" type="password" autocomplete="new-password" minlength="12" maxlength="128" required />
+          </div>
+          <button id="passwordSetupButton" type="submit">Enable password sign-in</button>
+        </form>
+
+        <p id="setupError" class="error" role="alert"></p>
+        <div class="facts">
+          <div class="fact"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>You can add more passkeys and a password later from Administration.</span></div>
+          <div class="fact"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>The server never sees your passkey's private key; passwords are stored as Argon2id hashes.</span></div>
+        </div>
+      </div>
+    </section>
+    <p class="footer">Standalone sign-in — no external identity provider</p>
+  </main>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const requestedReturn = params.get('returnTo') || '/admin';
+    const returnTo = requestedReturn.startsWith('/') && !requestedReturn.startsWith('//') && !requestedReturn.includes('\\') && !/[\r\n]/.test(requestedReturn) ? requestedReturn : '/';
+    const loadingView = document.getElementById('loadingView');
+    const loginView = document.getElementById('loginView');
+    const setupView = document.getElementById('setupView');
+    const loginButton = document.getElementById('loginButton');
+    const passwordLoginForm = document.getElementById('passwordLoginForm');
+    const setupForm = document.getElementById('setupForm');
+
+    function webAuthnSupported() {
+      return window.isSecureContext && 'PublicKeyCredential' in window && navigator.credentials;
+    }
+
+    function base64urlToBytes(value) {
+      const base64 = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
+      const binary = atob(base64);
+      return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    }
+
+    function bytesToBase64url(value) {
+      if (value === null || value === undefined) return null;
+      const bytes = new Uint8Array(value);
+      let binary = '';
+      bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    }
+
+    function creationOptionsFromJSON(options) {
+      if (PublicKeyCredential.parseCreationOptionsFromJSON) return PublicKeyCredential.parseCreationOptionsFromJSON(options.publicKey);
+      const publicKey = { ...options.publicKey, challenge: base64urlToBytes(options.publicKey.challenge) };
+      publicKey.user = { ...publicKey.user, id: base64urlToBytes(publicKey.user.id) };
+      publicKey.excludeCredentials = (publicKey.excludeCredentials || []).map((credential) => ({ ...credential, id: base64urlToBytes(credential.id) }));
+      return publicKey;
+    }
+
+    function requestOptionsFromJSON(options) {
+      if (PublicKeyCredential.parseRequestOptionsFromJSON) return PublicKeyCredential.parseRequestOptionsFromJSON(options.publicKey);
+      const publicKey = { ...options.publicKey, challenge: base64urlToBytes(options.publicKey.challenge) };
+      publicKey.allowCredentials = (publicKey.allowCredentials || []).map((credential) => ({ ...credential, id: base64urlToBytes(credential.id) }));
+      return publicKey;
+    }
+
+    function credentialToJSON(credential) {
+      const response = {
+        clientDataJSON: bytesToBase64url(credential.response.clientDataJSON),
+      };
+      if ('attestationObject' in credential.response) {
+        response.attestationObject = bytesToBase64url(credential.response.attestationObject);
+        if (credential.response.getTransports) response.transports = credential.response.getTransports();
+      } else {
+        response.authenticatorData = bytesToBase64url(credential.response.authenticatorData);
+        response.signature = bytesToBase64url(credential.response.signature);
+        response.userHandle = bytesToBase64url(credential.response.userHandle);
+      }
+      return {
+        id: credential.id,
+        rawId: bytesToBase64url(credential.rawId),
+        type: credential.type,
+        authenticatorAttachment: credential.authenticatorAttachment,
+        clientExtensionResults: credential.getClientExtensionResults(),
+        response,
+      };
+    }
+
+    async function api(path, body) {
+      const response = await fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: body === undefined ? '{}' : JSON.stringify(body),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `Request failed with HTTP ${response.status}`);
+      return data;
+    }
+
+    function browserMessage(error) {
+      if (error?.name === 'NotAllowedError' || error?.name === 'AbortError') return 'The passkey prompt was closed. Nothing changed.';
+      if (error?.name === 'InvalidStateError') return 'That passkey is already registered. Use a different authenticator.';
+      return error?.message || 'The passkey operation failed. Try again.';
+    }
+
+    function setBusy(button, busy, busyLabel) {
+      if (!button.dataset.label) button.dataset.label = button.textContent;
+      button.disabled = busy;
+      button.setAttribute('aria-busy', String(busy));
+      button.textContent = busy ? busyLabel : button.dataset.label;
+    }
+
+    function show(view) {
+      loadingView.hidden = view !== loadingView;
+      loginView.hidden = view !== loginView;
+      setupView.hidden = view !== setupView;
+    }
+
+    async function signIn() {
+      const error = document.getElementById('loginError');
+      error.textContent = '';
+      setBusy(loginButton, true, 'Waiting for passkey...');
+      try {
+        const options = await api('/access/passkeys/login/start');
+        const credential = await navigator.credentials.get({ publicKey: requestOptionsFromJSON(options) });
+        await api('/access/passkeys/login/finish', credentialToJSON(credential));
+        location.replace(returnTo);
+      } catch (signInError) {
+        error.textContent = browserMessage(signInError);
+      } finally {
+        setBusy(loginButton, false, '');
+      }
+    }
+
+    async function signInWithPassword(event) {
+      event.preventDefault();
+      const button = document.getElementById('passwordLoginButton');
+      const error = document.getElementById('loginError');
+      error.textContent = '';
+      setBusy(button, true, 'Signing in...');
+      try {
+        await api('/access/login/password', { password: document.getElementById('loginPassword').value });
+        location.replace(returnTo);
+      } catch (signInError) {
+        error.textContent = signInError.message || 'Sign-in failed.';
+      } finally {
+        setBusy(button, false, '');
+      }
+    }
+
+    let setupMethod = 'passkey';
+
+    function selectSetupMethod(method) {
+      setupMethod = method;
+      document.getElementById('choosePasskeyButton').classList.toggle('active', method === 'passkey');
+      document.getElementById('choosePasswordButton').classList.toggle('active', method === 'password');
+      document.getElementById('passkeySetupForm').hidden = method !== 'passkey';
+      document.getElementById('passwordSetupForm').hidden = method !== 'password';
+    }
+
+    async function createPassword(event) {
+      event.preventDefault();
+      const button = document.getElementById('passwordSetupButton');
+      const error = document.getElementById('setupError');
+      error.textContent = '';
+      const password = document.getElementById('setupPassword').value;
+      if (password !== document.getElementById('setupPasswordConfirm').value) {
+        error.textContent = 'The passwords do not match.';
+        return;
+      }
+      setBusy(button, true, 'Saving password...');
+      try {
+        await api('/access/setup/password', { setupCode: document.getElementById('setupCode').value, password });
+        location.replace(returnTo === '/' ? '/admin' : returnTo);
+      } catch (setupError) {
+        error.textContent = setupError.message || 'Password setup failed.';
+      } finally {
+        setBusy(button, false, '');
+      }
+    }
+
+    async function passkeySetup(event) {
+      event.preventDefault();
+      const button = document.getElementById('setupButton');
+      const error = document.getElementById('setupError');
+      error.textContent = '';
+      setBusy(button, true, 'Waiting for passkey...');
+      try {
+        const options = await api('/access/setup/passkeys/start', {
+          setupCode: document.getElementById('setupCode').value,
+          name: document.getElementById('passkeyName').value,
+        });
+        const credential = await navigator.credentials.create({ publicKey: creationOptionsFromJSON(options) });
+        await api('/access/setup/passkeys/finish', credentialToJSON(credential));
+        location.replace(returnTo === '/' ? '/admin' : returnTo);
+      } catch (setupError) {
+        error.textContent = browserMessage(setupError);
+      } finally {
+        setBusy(button, false, '');
+      }
+    }
+
+    function showLoginMethods(status) {
+      const hasPassword = Boolean(status.hasPassword);
+      const hasPasskeys = Boolean(status.hasPasskeys);
+      document.getElementById('passkeyLoginBlock').hidden = !hasPasskeys && hasPassword;
+      document.getElementById('passwordLoginBlock').hidden = !hasPassword;
+      document.getElementById('passwordLoginForm').hidden = !hasPassword;
+      loginButton.hidden = !hasPasskeys;
+      document.getElementById('methodDivider').hidden = !(hasPassword && hasPasskeys);
+      if (!webAuthnSupported()) {
+        loginNotice.hidden = false;
+        loginNotice.textContent = 'Passkeys need a supported browser on HTTPS or localhost. You can still sign in with the dashboard password.';
+        loginButton.disabled = true;
+      }
+      if (hasPassword) {
+        document.getElementById('loginPassword').focus();
+      } else if (hasPasskeys && webAuthnSupported()) {
+        loginButton.focus();
+      }
+    }
+
+    function renderSetupTargets() {
+      const webauthnOK = webAuthnSupported();
+      Array.from(document.querySelectorAll('#passkeySetupForm input, #passkeySetupForm button')).forEach((element) => { element.disabled = !webauthnOK; });
+      if (!webauthnOK) selectSetupMethod('password');
+    }
+
+    async function initialize() {
+      try {
+        const response = await fetch('/access/status', { headers: { Accept: 'application/json' } });
+        const status = await response.json();
+        if (!response.ok) throw new Error(status.error || `HTTP ${response.status}`);
+        if (status.authenticated) {
+          location.replace(returnTo);
+          return;
+        }
+        show(status.setupRequired ? setupView : loginView);
+        if (status.setupRequired) {
+          renderSetupTargets();
+          document.getElementById('choosePasskeyButton').addEventListener('click', () => selectSetupMethod('passkey'));
+          document.getElementById('choosePasswordButton').addEventListener('click', () => selectSetupMethod('password'));
+          document.getElementById('setupButton').addEventListener('click', passkeySetup);
+          document.getElementById('passwordSetupForm').addEventListener('submit', createPassword);
+          document.getElementById('setupCode').focus();
+        } else {
+          showLoginMethods(status);
+        }
+      } catch {
+        show(loginView);
+        loginButton.disabled = true;
+        document.getElementById('loginError').textContent = 'This server did not return its authentication status. Check the service and try again.';
+      }
+    }
+
+    loginButton.addEventListener('click', signIn);
+    passwordLoginForm.addEventListener('submit', signInWithPassword);
+    setupForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      if (setupMethod === 'passkey') passkeySetup(event);
+      else createPassword(event);
+    });
+    initialize();
+  </script>
+</body>
+</html>
