@@ -14,7 +14,7 @@ services:
       - ./data:/app/data
       - ./transcripts:/app/transcripts
     healthcheck:
-      test: ["CMD", "/app", "healthcheck"]
+      test: ["CMD", "/usr/local/bin/transcript-api", "healthcheck"]
       interval: 30s
       timeout: 5s
       retries: 3
