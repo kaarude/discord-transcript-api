@@ -63,7 +63,7 @@
     if (role) role.hidden = !profile.roleName;
     if (roleIcon) {
       roleIcon.replaceChildren();
-      if (/^(?:https:\\/\\/|\\/)/.test(profile.roleIcon || '')) {
+      if (/^(?:https:\/\/|\/)/.test(profile.roleIcon || '')) {
         var roleImage = document.createElement('img');
         roleImage.src = profile.roleIcon;
         roleImage.alt = '';
@@ -242,3 +242,4 @@
     setTimeout(showNewestMessage, 250);
     setTimeout(function () { showNewestMessage(); followNewest = false; }, 1500);
   }
+})();
