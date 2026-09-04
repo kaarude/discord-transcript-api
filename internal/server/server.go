@@ -39,7 +39,7 @@ var preservedColor = regexp.MustCompile(`<span class="[^"]*\busername\b[^"]*" st
 var errExportTooLarge = errors.New("transcript bundle exceeds storage reservation")
 
 const (
-	RendererVersion    = 10
+	RendererVersion    = 11
 	maxRenderedHTML    = 128 << 20
 	storageReservation = media.DefaultTotalLimit + maxRenderedHTML + 8*discord.MaxTranscriptResponseBytes
 )

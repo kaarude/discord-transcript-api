@@ -81,6 +81,25 @@ func TestRoleColorAndOrdering(t *testing.T) {
 	}
 }
 
+func TestEmbeddedScriptIsWellFormed(t *testing.T) {
+	// A parse error anywhere in the inline script kills every feature at
+	// once (theme toggle, download menu, spoilers, profile cards), so the
+	// script must survive basic structural checks.
+	script := strings.TrimRight(Script, "\n")
+	if strings.Contains(script, `\\/`) {
+		t.Error(`script contains double-escaped forward slash "\\/" (regex literal bug)`)
+	}
+	if !strings.HasPrefix(script, "(function () {") {
+		t.Error("script does not open its IIFE")
+	}
+	if !strings.HasSuffix(script, "})();") {
+		t.Error("script does not close its IIFE")
+	}
+	if strings.Count(script, "{") != strings.Count(script, "}") {
+		t.Error("script braces are unbalanced")
+	}
+}
+
 func BenchmarkTranscript1000(b *testing.B) {
 	messages := make([]model.Object, 1000)
 	for index := range messages {
